@@ -12,3 +12,7 @@ psycopg2-binary
 # Tâches planifiées (Async)
 celery
 redis
+
+# API
+fastapi
+uvicorn

@@ -1,91 +1,83 @@
-# Google Play Reviews Scraper & ETL Pipeline (Phase 3)
+# Google Play Surveillance Platform (Backend)
 
-Ce projet constitue la **Phase 3** du développement global. Il s'agit d'un module Python autonome conçu pour **scraper**, **nettoyer** et **stocker** les avis d'applications depuis le Google Play Store.
+Ce module est le cœur de la plateforme de surveillance d'applications. Il gère la collecte de données (Scraping), le stockage structuré (PostgreSQL) et l'exposition des données via une API (FastAPI).
 
-L'objectif final est de fournir des données structurées et propres pour alimenter les modèles d'Intelligence Artificielle.
+## 🏗️ Architecture "Monitoring Hybride"
 
-## 📋 Fonctionnalités Clés
+Le système fonctionne en deux temps pour garantir réactivité et exhaustivité :
 
-* **Extraction (Scraping) :** Collecte automatisée des avis via `google-play-scraper`.
-* **Support Multi-Apps :** Gestion dynamique d'une liste d'applications à surveiller.
-* **Architecture Modulaire :** Séparation claire entre Scraping, Nettoyage et Base de Données.
-* **ORM Database :** Utilisation de SQLAlchemy pour interagir proprement avec la BDD.
-* **Automatisation :** Prêt pour l'intégration de tâches planifiées (Celery/Redis).
-
----
+1.  **On-Boarding (Temps Réel) :** Via l'API, l'utilisateur ajoute une app. Le système scrape immédiatement un échantillon (50 avis) pour confirmer l'ajout.
+2.  **Surveillance (Arrière-plan) :** Des tâches planifiées (Celery - *en cours d'implémentation*) scannent périodiquement les nouvelles données pour l'historique complet.
 
 ## 📂 Structure du Projet
 
-L'architecture sépare les responsabilités pour faciliter la maintenance :
-
 ```text
 google-play-scraper-pipeline/
-├── config/
-│   └── settings.ini          # Configuration (Liste des Apps, paramètres généraux)
-├── data/                     # Stockage temporaire (utile pour le debug)
-│   ├── raw/                  # Données brutes (JSON/CSV avant nettoyage)
-│   └── processed/            # Données nettoyées (prêtes pour l'insertion)
+├── config/               # Configuration globale
+├── data/                 # Données locales (logs, temp)
 ├── src/
-│   ├── scraper/
-│   │   └── scraper_module.py # LOGIQUE D'EXTRACTION (Google Play)
-│   ├── pipeline/
-│   │   └── cleaner.py        # LOGIQUE DE TRANSFORMATION (Pandas)
+│   ├── api.py            # API FastAPI (Point d'entrée Web)
+│   ├── main_pipeline.py  # Script d'exécution manuelle
 │   ├── database/
-│   │   ├── db_manager.py     # Gestion de la connexion BDD (SQLAlchemy)
-│   │   └── models.py         # Définition des tables (Schémas)
-│   ├── tasks.py              # Tâches Celery pour l'automatisation
-│   └── main_pipeline.py      # ORCHESTRATEUR (Point d'entrée du script)
-├── .env                      # Secrets (Mots de passe DB, API Keys)
-├── .gitignore                # Fichiers à ignorer par Git
-├── README.md                 # Documentation
-└── requirements.txt          # Dépendances Python
-Détails des Modules
-src/scraper/ : Interagit avec l'extérieur (le Store). Si l'API change, on modifie ici.
+│   │   ├── models.py     # Schéma de la BDD (Applications, Reviews)
+│   │   └── db_manager.py # Connexion PostgreSQL
+│   ├── pipeline/
+│   │   └── loader.py     # Logique d'insertion (Load) & Anti-doublons
+│   └── scraper/
+│       └── scraper_module.py # Moteur de scraping (Google Play)
+├── .env                  # Secrets (DB_PASSWORD, etc.)
+└── requirements.txt      # Dépendances
+🚀 Installation
+Prérequis : Python 3.9+, PostgreSQL installé.
 
-src/pipeline/ : Contient la logique de nettoyage des données (suppression emojis, formatage dates).
+Installation :
 
-src/database/ : Gère tout ce qui touche au stockage. models.py définit à quoi ressemble une ligne de donnée, et db_manager.py gère l'insertion.
-
-🚀 Installation & Configuration
-1. Prérequis
-Python 3.9+
-
-Une base de données (PostgreSQL recommandé ou MySQL)
-
-Redis (optionnel, uniquement pour le mode planifié)
-
-2. Installation
 Bash
 
 # Créer et activer l'environnement virtuel
 python -m venv venv
-source venv/bin/activate  # Windows: .\venv\Scripts\Activate.ps1 (powershell) || venv\Scripts\activate (cmd || git bash)
+source venv/bin/activate  # Windows: .\venv\Scripts\Activate.ps1
 
 # Installer les dépendances
 pip install -r requirements.txt
-3. Configuration
-Créez un fichier .env à la racine :
+Base de Données :
+
+Créer une base vide nommée reviews_db dans PostgreSQL.
+
+Configurer le fichier .env à la racine :
 
 Ini, TOML
 
 DB_HOST=localhost
 DB_NAME=reviews_db
 DB_USER=postgres
-DB_PASSWORD=secret
-Configurez les cibles dans config/settings.ini :
-
-Ini, TOML
-
-[SCRAPING]
-target_apps = com.whatsapp, com.instagram.android
-🏃‍♂️ Lancement
-Pour lancer le pipeline complet manuellement :
+DB_PASSWORD=votre_mot_de_passe
+Initialiser les tables :
 
 Bash
 
-python src/main_pipeline.py
+python -m src.database.db_manager
+🔌 Utilisation de l'API
+Lancer le serveur de développement :
 
+Bash
 
+uvicorn src.api:app --reload
+Documentation Swagger UI : http://127.0.0.1:8000/docs
 
+Endpoint Principal : POST /add-app
+
+Body : {"app_id": "com.exemple.app"}
+
+Effet : Scrape l'app, l'ajoute en BDD et renvoie un aperçu JSON.
+
+🛠️ Stack Technique
+Framework API : FastAPI + Uvicorn
+
+Scraping : google-play-scraper
+
+Database : PostgreSQL + SQLAlchemy
+
+Data Processing : Pandas
 
 Dernière mise à jour : Novembre 2025
