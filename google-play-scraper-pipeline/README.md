@@ -1,50 +1,62 @@
-# Google Play Surveillance Platform (Backend)
+📱 Plateforme de Surveillance Google Play (Backend)
+Ce projet est le moteur backend d'une plateforme d'aide à la décision basée sur les avis utilisateurs. Il permet de collecter, nettoyer et stocker les données du Google Play Store via une architecture hybride (Temps réel + Arrière-plan).
 
-Ce module est le cœur de la plateforme de surveillance d'applications. Il gère la collecte de données (Scraping), le stockage structuré (PostgreSQL) et l'exposition des données via une API (FastAPI).
+🚀 Fonctionnalités Clés
+Entrée Intelligente : Accepte une URL Google Play ou un ID d'application (ex: com.whatsapp).
 
-## 🏗️ Architecture "Monitoring Hybride"
+On-Boarding Temps Réel : Scrape un échantillon immédiat pour valider l'ajout et répondre à l'interface en < 3 secondes.
 
-Le système fonctionne en deux temps pour garantir réactivité et exhaustivité :
+Surveillance Arrière-plan : Utilise Celery & Redis pour scraper l'historique massif (milliers d'avis) sans bloquer l'utilisateur.
 
-1.  **On-Boarding (Temps Réel) :** Via l'API, l'utilisateur ajoute une app. Le système scrape immédiatement un échantillon (50 avis) pour confirmer l'ajout.
-2.  **Surveillance (Arrière-plan) :** Des tâches planifiées (Celery - *en cours d'implémentation*) scannent périodiquement les nouvelles données pour l'historique complet.
+Pipeline ETL :
 
-## 📂 Structure du Projet
+Extract : google-play-scraper
 
-```text
+Transform : Module de nettoyage automatique (suppression tags traduction, espaces, avis vides).
+
+Load : Stockage structuré dans PostgreSQL.
+
+API REST : Exposée via FastAPI pour la communication avec le Frontend (React).
+
+📂 Architecture du Projet
+Plaintext
+
 google-play-scraper-pipeline/
-├── config/               # Configuration globale
-├── data/                 # Données locales (logs, temp)
+├── config/               # Fichiers de configuration
 ├── src/
-│   ├── api.py            # API FastAPI (Point d'entrée Web)
-│   ├── main_pipeline.py  # Script d'exécution manuelle
+│   ├── api.py            # POINT D'ENTRÉE : API FastAPI
+│   ├── tasks.py          # WORKER : Tâches d'arrière-plan (Celery)
+│   ├── main_pipeline.py  # Script de test manuel
 │   ├── database/
 │   │   ├── models.py     # Schéma de la BDD (Applications, Reviews)
 │   │   └── db_manager.py # Connexion PostgreSQL
 │   ├── pipeline/
-│   │   └── loader.py     # Logique d'insertion (Load) & Anti-doublons
+│   │   ├── cleaner.py    # Logique de Nettoyage des données
+│   │   └── loader.py     # Logique d'Insertion en BDD
 │   └── scraper/
-│       └── scraper_module.py # Moteur de scraping (Google Play)
-├── .env                  # Secrets (DB_PASSWORD, etc.)
-└── requirements.txt      # Dépendances
-🚀 Installation
-Prérequis : Python 3.9+, PostgreSQL installé.
+│       └── scraper_module.py # Moteur de scraping
+├── .env                  # Variables d'environnement (Secrets)
+├── requirements.txt      # Liste des dépendances
+└── README.md             # Documentation
+🛠️ Installation & Configuration
+1. Prérequis
+Python 3.9+
 
-Installation :
+PostgreSQL
 
+Redis (Requis pour les tâches d'arrière-plan)
+
+2. Installation
 Bash
 
-# Créer et activer l'environnement virtuel
+# 1. Créer et activer l'environnement virtuel
 python -m venv venv
 source venv/bin/activate  # Windows: .\venv\Scripts\Activate.ps1
 
-# Installer les dépendances
+# 2. Installer les dépendances
 pip install -r requirements.txt
-Base de Données :
-
-Créer une base vide nommée reviews_db dans PostgreSQL.
-
-Configurer le fichier .env à la racine :
+3. Configuration Base de Données
+Créez un fichier .env à la racine :
 
 Ini, TOML
 
@@ -52,32 +64,56 @@ DB_HOST=localhost
 DB_NAME=reviews_db
 DB_USER=postgres
 DB_PASSWORD=votre_mot_de_passe
-Initialiser les tables :
+CELERY_BROKER_URL=redis://localhost:6379/0
+Initialisez les tables :
 
 Bash
 
 python -m src.database.db_manager
-🔌 Utilisation de l'API
-Lancer le serveur de développement :
+🏃‍♂️ Démarrage du Système
+Le système nécessite deux terminaux ouverts simultanément.
+
+Terminal 1 : Lancer l'API (Serveur Web)
+C'est le point d'entrée pour le Frontend.
 
 Bash
 
 uvicorn src.api:app --reload
-Documentation Swagger UI : http://127.0.0.1:8000/docs
+L'API sera accessible sur : http://127.0.0.1:8000
 
-Endpoint Principal : POST /add-app
+Terminal 2 : Lancer le Worker (Arrière-plan)
+C'est lui qui traite l'historique et les tâches lourdes.
 
-Body : {"app_id": "com.exemple.app"}
+Bash
 
-Effet : Scrape l'app, l'ajoute en BDD et renvoie un aperçu JSON.
+# Sur Windows (Important : --pool=solo)
+celery -A src.tasks worker --loglevel=info --pool=solo
 
-🛠️ Stack Technique
-Framework API : FastAPI + Uvicorn
+# Sur Linux/Mac
+celery -A src.tasks worker --loglevel=info
+🔌 Documentation de l'API
+1. Ajouter une Application (Point d'Entrée Principal)
+Utilisé par le bouton "Chercher" de l'interface utilisateur.
 
-Scraping : google-play-scraper
+URL : POST /add-app
 
-Database : PostgreSQL + SQLAlchemy
+Description : Lance le scraping immédiat + planifie le scraping complet.
 
-Data Processing : Pandas
+Format JSON :
 
-Dernière mise à jour : Novembre 2025
+JSON
+
+{
+  "query": "https://play.google.com/store/apps/details?id=com.whatsapp"
+}
+(Le champ query accepte aussi directement l'ID : com.whatsapp)
+
+2. Lire les Avis (Dashboard)
+Utilisé pour afficher les données.
+
+URL : GET /get-reviews/{app_id}
+
+Exemple : /get-reviews/com.whatsapp?limit=100
+
+🧪 Tests
+Vous pouvez tester l'API directement via l'interface Swagger générée automatiquement : 👉 http://127.0.0.1:8000/docs
