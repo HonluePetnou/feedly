@@ -3,6 +3,13 @@ from celery import Celery
 from src.scraper.scraper_module import collect_reviews
 from src.pipeline.loader import load_reviews_to_db
 from src.pipeline.cleaner import process_dataframe # <--- Module de nettoyage
+import configparser 
+
+
+# --- CHARGEMENT CONFIGURATION ---
+config = configparser.ConfigParser()
+config.read('config/settings.ini')
+HISTORY_LIMIT = int(config['LIMITS']['history_count']) # Récupère 5000
 
 # Configuration Redis
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')

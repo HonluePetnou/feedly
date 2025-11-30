@@ -2,7 +2,8 @@ import re
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from google_play_scraper import search  # <--- NOUVEL IMPORT
+from google_play_scraper import search
+import configparser
 
 # Modules internes
 from src.scraper.scraper_module import collect_reviews
@@ -11,6 +12,14 @@ from src.pipeline.cleaner import process_dataframe
 from src.database.db_manager import get_db
 from src.database.models import Application, Review
 from src.tasks import task_scrape_full_history
+
+
+
+
+# --- CHARGEMENT CONFIGURATION ---
+config = configparser.ConfigParser()
+config.read('config/settings.ini')
+ONBOARDING_LIMIT = int(config['LIMITS']['onboarding_count'])
 
 app = FastAPI(
     title="Google Play Monitoring API",
