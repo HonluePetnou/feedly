@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+google-play-scraper
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+textblob
+psycopg2-binary
