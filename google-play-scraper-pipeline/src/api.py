@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from google_play_scraper import search
 import configparser
 
+
 # Modules internes
 from src.scraper.scraper_module import collect_reviews
 from src.pipeline.loader import load_reviews_to_db
@@ -12,6 +13,7 @@ from src.pipeline.cleaner import process_dataframe
 from src.database.db_manager import get_db
 from src.database.models import Application, Review
 from src.tasks import task_scrape_full_history
+from src.rag import ask_gemini_about_reviews        # Pour appeler l'IA
 
 
 
@@ -25,6 +27,10 @@ app = FastAPI(
     title="Google Play Monitoring API",
     description="API Hybride avec résolution intelligente des noms d'apps."
 )
+
+class ChatRequest(BaseModel):
+    app_id: str      # ex: com.whatsapp
+    question: str    # ex: "Quels sont les problèmes principaux ?"
 
 class AppRequest(BaseModel):
     query: str  # On renomme 'app_id' en 'query' car ça peut être un nom ou une URL
@@ -138,3 +144,49 @@ def get_reviews(app_id: str, limit: int = 100, db: Session = Depends(get_db)):
         "app_name": app.name,
         "reviews": [{"date": r.posted_at, "rating": r.rating, "content": r.content} for r in reviews]
     }
+
+@app.post("/chat")
+def chat_with_data(request: ChatRequest, db: Session = Depends(get_db)):
+    """
+    Pose une question à l'IA basée sur les avis réels stockés en base.
+    """
+    print(f"🤖 [Chatbot] Question reçue pour {request.app_id} : {request.question}")
+
+    # 1. Récupérer l'ID interne de l'application
+    app = db.query(Application).filter(Application.package_name == request.app_id).first()
+    if not app:
+        return {"error": "Application non trouvée. Veuillez d'abord l'ajouter via /add-app."}
+
+    # 2. Récupérer les 50 derniers avis pertinents (nettoyés et récents)
+    # On prend ceux qui ont un contenu textuel utile
+    reviews = db.query(Review.content)\
+        .filter(Review.app_id == app.id)\
+        .filter(Review.content != None)\
+        .order_by(Review.posted_at.desc())\
+        .limit(50)\
+        .all()
+    
+    if not reviews:
+        return {"response": "Je n'ai pas trouvé assez d'avis pour analyser cette application."}
+
+    # Convertir la liste d'objets en liste de textes simples
+    reviews_text_list = [r.content for r in reviews]
+
+    # 3. Envoyer à Gemini
+    try:
+        ai_response = ask_gemini_about_reviews(
+            app_name=request.app_id,
+            question=request.question,
+            reviews_context=reviews_text_list
+        )
+        
+        return {
+            "app": request.app_id,
+            "question": request.question,
+            "response": ai_response,
+            "analyzed_reviews_count": len(reviews_text_list)
+        }
+
+    except Exception as e:
+        print(f"❌ Erreur Gemini : {e}")
+        return {"error": "Le chatbot a rencontré un problème technique."}

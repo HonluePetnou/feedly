@@ -1,58 +1,71 @@
-# 🧠 Moteur d'Analyse IA (AI Engine)
+## 2. Documentation du Moteur IA (`ai-engine/README.md`)
 
-Ce microservice est le "Cerveau" de la plateforme. Il surveille en permanence la base de données pour détecter les nouveaux avis récupérés par le scraper et les enrichir grâce à l'Intelligence Artificielle.
+Ce fichier explique au reste de l'équipe comment les données sont "enrichies" (Sentiment + Catégorie). C'est crucial pour que le développeur Frontend sache comment afficher les couleurs (Vert/Rouge) et les filtres.
 
-Il fonctionne de manière **asynchrone** et **autonome**.
+**Copiez ceci dans `ai-engine/README.md` :**
 
-## ⚡ Fonctionnalités
+```markdown
+# 🧠 Feedly AI Engine (Microservice)
 
-* **Analyse de Sentiment (Deep Learning) :** Utilise un modèle **BERT Multilingue** (Hugging Face) pour attribuer un score émotionnel de `-1.0` (Très Négatif) à `+1.0` (Très Positif).
-* **Catégorisation Automatique :** Détecte le sujet de l'avis (Bug Technique, Prix, Fonctionnalité, Satisfaction) via une analyse sémantique par mots-clés.
-* **Mode "Watcher" :** Un script tourne en boucle, récupère les avis par lots (batchs) de 50, les traite, et met à jour la base de données en temps réel.
+Ce module est le service d'analyse autonome de la plateforme. Il fonctionne comme un "Watcher" : il surveille la base de données en permanence, détecte les nouveaux avis bruts insérés par le Scraper, et les enrichit.
 
----
+## ⚡ Rôle dans l'Architecture
 
-## 🏗️ Architecture Technique
+Ce service est totalement découplé de l'API. Il ne communique que via la base de données.
+Son rôle est de transformer la donnée brute en donnée exploitable pour le Dashboard.
 
-Ce service est totalement découplé du Scraper. Il ne communique avec lui que via la **Base de Données Partagée**.
-
-1.  **Input :** Lit les lignes de la table `reviews` où `is_processed = FALSE`.
-2.  **Process :**
-    * Nettoyage du texte (Regex).
-    * Inférence IA (CPU).
-3.  **Output :** Met à jour `sentiment_score`, `category` et passe `is_processed = TRUE`.
-
-### Stack Technique
-
-* **Langage :** Python 3.9+
-* **Moteur IA :** `PyTorch` + `Transformers` (Hugging Face)
-* **Modèle :** `nlptown/bert-base-multilingual-uncased-sentiment`
-* **Database :** SQLAlchemy (PostgreSQL)
+1.  **Analyse de Sentiment (BERT) :** Attribue un score de positivité.
+2.  **Catégorisation (Keyword Extraction) :** Classe l'avis (Bug, Feature, etc.).
+3.  **Support Bilingue :** Gère nativement le Français et l'Anglais.
 
 ---
 
-## 🛠️ Installation
+## 📊 Données pour le Frontend
 
-⚠️ **Important :** Ce service nécessite son propre environnement virtuel, séparé du Scraper, car les librairies IA sont lourdes (~1 Go).
+Le moteur IA met à jour deux colonnes dans la table `reviews`. Voici comment les interpréter pour l'interface graphique.
 
-### 1. Configuration de l'environnement
+### 1. Le Score de Sentiment (`sentiment_score`)
+C'est un nombre flottant normalisé entre `-1.0` et `+1.0`.
+
+| Score | Signification | Couleur suggérée (UI) |
+| :--- | :--- | :--- |
+| **-1.0 à -0.3** | Négatif / Colère | 🔴 Rouge |
+| **-0.3 à +0.3** | Neutre / Mitigé | ⚪ Gris / Jaune |
+| **+0.3 à +1.0** | Positif / Satisfait | 🟢 Vert |
+
+### 2. La Catégorie (`category`)
+Utilisée pour les filtres et les diagrammes circulaires (Pie Charts).
+
+| Code Catégorie | Description |
+| :--- | :--- |
+| `BUG_TECHNIQUE` | Crashs, erreurs, écrans noirs, lenteurs. |
+| `PRICING_ADS` | Plaintes sur le prix, les abonnements ou la publicité excessive. |
+| `FEATURE_REQUEST` | Demandes de nouvelles fonctionnalités. |
+| `SATISFACTION` | Avis purement élogieux sans détails techniques. |
+| `AUTRE` | Tout ce qui ne rentre pas dans les cases ci-dessus. |
+
+---
+
+## 🛠️ Installation & Lancement
+
+⚠️ **Attention :** Ce module utilise un environnement virtuel dédié (`venv`) à cause de la taille des librairies PyTorch/Transformers. Ne pas utiliser le venv du scraper.
+
+### 1. Installation
 
 ```bash
 cd ai-engine
-
-# Créer l'environnement virtuel
 python -m venv venv
-
-# Activer l'environnement
 # Windows :
 .\venv\Scripts\Activate.ps1
-# Mac/Linux :
-source venv/bin/activate
-2. Installation des dépendancesBashpip install -r requirements.txt
-(Le téléchargement de PyTorch peut prendre plusieurs minutes selon votre connexion).3. ConfigurationCréez un fichier .env dans le dossier ai-engine/ avec vos accès BDD :Ini, TOMLDB_HOST=localhost
-DB_NAME=reviews_db
-DB_USER=postgres
-DB_PASSWORD=votre_mot_de_passe
-🚀 UtilisationPour lancer le moteur, exécutez simplement le script principal. Il téléchargera le modèle automatiquement lors du premier lancement.Bashpython -m src.main
-Comportement du scriptDémarrage : Charge le modèle en mémoire RAM.Boucle Infinie :Cherche 50 avis non traités.Si trouvés : Affiche ⚙️ Analyse... et traite le lot.Si vide : Affiche 💤 Pas de nouveaux avis et se met en pause 5 secondes.📊 Interprétation des ScoresLe modèle BERT prédit une note de 1 à 5 étoiles, que nous normalisons pour le Dashboard :Prédiction IAScore StockéSignification1 étoile-1.0Colère, Critique sévère 😡2 étoiles-0.5Mécontentement 🙁3 étoiles0.0Neutre / Mitigé 😐4 étoiles+0.5Satisfait 🙂5 étoiles+1.0Enthousiaste, Fan 
-🤩Projet Fendly - Module IA - Décembre 2025
+
+pip install -r requirements.txt
+2. Configuration (.env)
+Copier le fichier .env du scraper ici (mêmes accès BDD).
+
+3. Lancer le Watcher
+Bash
+
+python -m src.main
+Le script doit tourner en permanence en arrière-plan pour traiter les nouveaux avis au fil de l'eau.
+
+Feedly AI Module - 2025
