@@ -52,7 +52,7 @@ Utilisée pour les filtres et les diagrammes circulaires (Pie Charts).
 
 ### 1. Installation
 
-```bash
+```bash```
 cd ai-engine
 python -m venv venv
 # Windows :
