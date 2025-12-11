@@ -10,13 +10,26 @@ import {
 } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import Link from "next/link";
-import { useState } from "react";
+import Image from "next/image";
+import { useState, useMemo, useEffect } from "react";
 import { Footer } from "@/components/Footer";
+import { MobileMenu } from "@/components/ui/MobileMenu";
 
 import { ModeToggle } from "@/components/mode-toggle";
 
 export default function LandingPage() {
   const [email, setEmail] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => {
+    if (mobileOpen) {
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.documentElement.style.overflow = "";
+    }
+    return () => {
+      document.documentElement.style.overflow = "";
+    };
+  }, [mobileOpen]);
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-linear-to-b from-background to-background/95">
@@ -30,7 +43,7 @@ export default function LandingPage() {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
+      <header className="fixed top-0 left-0 w-full z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
         <div className="container mx-auto flex items-center justify-between px-4 py-4 sm:px-6 md:px-10">
           <div className="flex items-center gap-3 group">
             <div className="size-8 text-primary transition-transform group-hover:scale-110 group-hover:rotate-12 duration-300">
@@ -98,7 +111,11 @@ export default function LandingPage() {
             </div>
           </nav>
 
-          <button className="md:hidden p-2 hover:bg-accent rounded-lg transition-colors">
+          <button
+            className="md:hidden p-2 hover:bg-accent rounded-lg transition-colors"
+            aria-label="Open navigation menu"
+            onClick={() => setMobileOpen((v) => !v)}
+          >
             <svg
               className="w-6 h-6"
               fill="none"
@@ -114,32 +131,84 @@ export default function LandingPage() {
             </svg>
           </button>
         </div>
+        <MobileMenu
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          navLinks={[
+            { label: "Features", href: "#features" },
+            { label: "How it Works", href: "#how-it-works" },
+            { label: "Pricing", href: "#pricing" },
+            { label: "Contact", href: "/contact" },
+            { label: "Try for Free", href: "/signup" },
+            { label: "Sign In", href: "/login" },
+          ]}
+        />
       </header>
 
-      <main className="flex-1 mx-4 md:mx-8 lg:mx-16">
+      <main className="flex-1 mx-4 md:mx-8 lg:mx-16 pt-20">
         {/* Hero Section */}
-        <section className="container mx-auto px-4 pb-12 md:pb-20 pt-8">
-          <div className="flex flex-col gap-12 md:flex-row-reverse md:items-center">
-            <div className="w-full md:w-1/2 relative group">
+        <section className="container mx-auto px-4 pb-12 md:pb-20 pt-0">
+          <div className="flex flex-col gap-12 md:flex-row md:items-start">
+            <div className="w-full md:w-1/2 relative group md:self-center order-2">
               <div className="absolute inset-0 bg-linear-to-br from-primary/20 to-cyan-500/20 rounded-2xl blur-2xl group-hover:blur-3xl transition-all duration-500" />
-              <div className="relative aspect-video w-full rounded-2xl bg-linear-to-br from-blue-500 to-cyan-500 bg-cover bg-center shadow-2xl shadow-primary/20 border border-primary/20 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
-                <div className="absolute inset-0 bg-grid-white/10 mask-[linear-gradient(0deg,transparent,black)]" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-3/4 h-3/4 bg-background/10 backdrop-blur-sm rounded-xl border border-white/20 p-6 animate-fade-in">
-                    <div className="space-y-3">
-                      <div className="h-3 bg-white/30 rounded w-3/4 animate-pulse" />
-                      <div
-                        className="h-3 bg-white/20 rounded w-1/2 animate-pulse"
-                        style={{ animationDelay: "0.2s" }}
-                      />
-                      <div className="h-20 bg-white/10 rounded mt-4" />
+              <div className="relative aspect-video sm:h-[360px] md:h-[520px] lg:h-[560px] w-full rounded-2xl bg-muted/20 shadow-2xl shadow-primary/20 border border-primary/20 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
+                <Image
+                  src="/whitecapture.png"
+                  alt="Feedly dashboard preview (light)"
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-contain dark:hidden"
+                />
+                <Image
+                  src="/blackcapture.png"
+                  alt="Feedly dashboard preview (dark)"
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-contain hidden dark:block"
+                />
+                <div className="absolute inset-0 bg-grid-white/10 mask-[linear-gradient(0deg,transparent,black)]" aria-hidden="true" />
+              </div>
+              {/* Floating Cards Around Screenshot */}
+              <div className="pointer-events-none select-none">
+                {/* Notification Card */}
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center animate-fade-in-up">
+                  <div className="bg-background/90 shadow-xl rounded-2xl px-6 py-3 border border-border/60 flex items-center gap-3">
+                    <span className="inline-flex items-center justify-center size-6 rounded-full bg-primary text-white font-bold">N</span>
+                    <div>
+                      <div className="font-semibold text-sm">New Notification</div>
+                      <div className="text-xs text-muted-foreground">You have 3 new reviews</div>
+                    </div>
+                  </div>
+                </div>
+                {/* Feature List Card */}
+                <div className="absolute bottom-4 -left-32 hidden md:block animate-fade-in-left">
+                  <div className="bg-background/95 shadow-lg rounded-xl border border-border/60 px-5 py-4 w-56">
+                    <div className="font-bold mb-2 text-primary">Features</div>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>AI Sentiment Analysis</li>
+                      <li>Bug Detection</li>
+                      <li>Odoo Integration</li>
+                      <li>Real-time Alerts</li>
+                    </ul>
+                  </div>
+                </div>
+                {/* Stats Card */}
+                <div className="absolute bottom-8 -right-32 hidden md:block animate-fade-in-right">
+                  <div className="bg-background/95 shadow-lg rounded-xl border border-border/60 px-6 py-4 w-48">
+                    <div className="text-lg font-bold text-primary mb-1">10K+</div>
+                    <div className="text-xs text-muted-foreground mb-2">Reviews Analyzed</div>
+                    <div className="flex gap-2">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium"><span className="size-2 rounded-full bg-cyan-500 inline-block"></span> 98% Accuracy</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-medium"><span className="size-2 rounded-full bg-emerald-500 inline-block"></span> 24/7</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-8 md:w-1/2">
+            <div className="flex flex-col gap-8 md:w-1/2 order-1">
               <div className="flex flex-col gap-6 animate-fade-in">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 w-fit">
                   <span className="relative flex h-2 w-2">
@@ -195,6 +264,20 @@ export default function LandingPage() {
                 >
                   Watch Demo
                 </Button>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
+                <div className="inline-flex items-center gap-2">
+                  <svg className="size-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>No credit card required</span>
+                </div>
+                <div className="inline-flex items-center gap-2">
+                  <svg className="size-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+                  </svg>
+                  <span>Cancel anytime</span>
+                </div>
               </div>
 
               {/* Stats */}
@@ -637,20 +720,27 @@ export default function LandingPage() {
 
             <div className="w-full relative group">
               <div className="absolute inset-0 bg-linear-to-br from-primary/20 to-cyan-500/20 rounded-2xl blur-3xl group-hover:blur-[100px] transition-all duration-500" />
-              <div className="relative w-full aspect-video rounded-2xl border border-primary/20 bg-muted/50 backdrop-blur-sm p-3 shadow-2xl shadow-primary/10 overflow-hidden">
-                <div className="w-full h-full bg-linear-to-br from-blue-500/20 to-cyan-500/20 rounded-xl flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 bg-grid-white/5 mask-[linear-gradient(0deg,transparent,black)]" />
-                  <div className="relative z-10 text-center space-y-4">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/80 backdrop-blur-sm border border-border/50">
-                      <div className="size-2 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-sm font-medium">
-                        Live Dashboard Preview
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground">
-                      Interactive demo coming soon
-                    </p>
-                  </div>
+              <div className="relative w-full aspect-video rounded-2xl border border-primary/20 bg-muted/50 backdrop-blur-sm shadow-2xl shadow-primary/10 overflow-hidden">
+                <Image
+                  src="/whitecapture.png"
+                  alt="Dashboard preview (light)"
+                  fill
+                  priority
+                  sizes="100vw"
+                  className="object-contain dark:hidden"
+                />
+                <Image
+                  src="/blackcapture.png"
+                  alt="Dashboard preview (dark)"
+                  fill
+                  priority
+                  sizes="100vw"
+                  className="object-contain hidden dark:block"
+                />
+                <div className="absolute inset-0 bg-grid-white/5 mask-[linear-gradient(0deg,transparent,black)]" aria-hidden="true" />
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm">
+                  <div className="size-2 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-xs sm:text-sm font-medium">Live Dashboard Preview</span>
                 </div>
               </div>
             </div>
