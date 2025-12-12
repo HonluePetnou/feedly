@@ -68,3 +68,61 @@ class Review(Base):
 
     def __repr__(self):
         return f"<Review(id='{self.review_id}', rating={self.rating})>"
+
+
+# 4. Table pour les Utilisateurs (Auth)
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fullname = Column(String(255), nullable=False)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # OTP & Status
+    is_active = Column(Boolean, default=False)
+    otp_code = Column(String(6), nullable=True)
+    otp_expires_at = Column(DateTime, nullable=True)
+    
+    # Relations
+    conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<User(email='{self.email}')>"
+
+
+# 5. Table pour les Conversations (Chat sessions)
+class Conversation(Base):
+    __tablename__ = 'conversations'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    app_id = Column(Integer, ForeignKey('applications.id'), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relations
+    user = relationship("User", back_populates="conversations")
+    application = relationship("Application")
+    messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan", order_by="ChatMessage.created_at")
+
+    def __repr__(self):
+        return f"<Conversation(id={self.id}, user_id={self.user_id}, app_id={self.app_id})>"
+
+
+# 6. Table pour les Messages de Chat
+class ChatMessage(Base):
+    __tablename__ = 'chat_messages'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    conversation_id = Column(Integer, ForeignKey('conversations.id'), nullable=False, index=True)
+    role = Column(String(10), nullable=False)  # 'user' or 'bot'
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relation
+    conversation = relationship("Conversation", back_populates="messages")
+
+    def __repr__(self):
+        return f"<ChatMessage(id={self.id}, role='{self.role}')>"

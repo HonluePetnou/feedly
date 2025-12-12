@@ -17,3 +17,8 @@ redis
 # API
 fastapi
 uvicorn
+
+# Auth
+passlib[bcrypt]
+python-jose[cryptography]
+resend

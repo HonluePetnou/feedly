@@ -1,8 +1,5 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
@@ -14,97 +11,140 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
-
-const formSchema = z.object({
-  url: z.string().url("Please enter a valid URL").min(1, "URL is required"),
-  appName: z.string().optional(),
-  period: z.enum(["30days", "3months", "6months", "custom"]),
-  volume: z.enum(["100", "1000", "5000", "unlimited"]),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { useRouter } from "next/navigation";
+import { Loader2, ArrowLeft, Search, Link as LinkIcon } from "lucide-react";
+import Link from "next/link";
+import { appService } from "@/services/appService";
 
 export function AddAppForm() {
+  const router = useRouter();
+  const [input, setInput] = useState("");
+  const [country, setCountry] = useState("fr");
+  const [count, setCount] = useState("200");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      url: "",
-      period: "30days",
-      volume: "100",
-    },
-  });
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!input.trim()) return;
 
-  async function onSubmit(data: FormValues) {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    console.log(data);
-    setIsLoading(false);
-    // Redirect or show success
+    setError("");
+    setSuccess("");
+
+    try {
+      const result = await appService.addApp(
+        input.trim(),
+        country,
+        parseInt(count)
+      );
+      setSuccess(`✅ Application ajoutée : ${result.resolved_id}`);
+      setTimeout(() => {
+        router.push("/apps");
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || "Erreur lors de l'ajout");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Add New Application</CardTitle>
-        <CardDescription>
-          Enter the Google Play Store URL to start analyzing reviews.
-        </CardDescription>
+        <div className="flex items-center gap-4 mb-2">
+          <Link href="/apps">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="size-4" />
+            </Button>
+          </Link>
+          <div>
+            <CardTitle>Ajouter une application</CardTitle>
+            <CardDescription>
+              Entrez l'URL Google Play, le nom de l'app ou l'ID du package.
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={onSubmit} className="space-y-6">
+          {error && (
+            <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/50 rounded-md">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="p-3 text-sm text-green-500 bg-green-50 dark:bg-green-950/50 rounded-md">
+              {success}
+            </div>
+          )}
+
           <div className="space-y-2">
-            <label className="text-sm font-medium">Google Play URL</label>
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Search className="size-4" />
+              Application
+            </label>
             <Input
-              placeholder="https://play.google.com/store/apps/details?id=..."
-              {...form.register("url")}
+              placeholder="Ex: WhatsApp, com.whatsapp, ou URL Play Store..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={isLoading}
             />
-            {form.formState.errors.url && (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.url.message}
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground">
+              Vous pouvez entrer le nom de l'app, son package ID, ou l'URL
+              complète du Play Store.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Analysis Period</label>
+              <label className="text-sm font-medium">Pays</label>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                {...form.register("period")}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                disabled={isLoading}
               >
-                <option value="30days">Last 30 Days</option>
-                <option value="3months">Last 3 Months</option>
-                <option value="6months">Last 6 Months</option>
-                <option value="custom">Custom Range</option>
+                <option value="fr">France</option>
+                <option value="us">États-Unis</option>
+                <option value="gb">Royaume-Uni</option>
+                <option value="de">Allemagne</option>
+                <option value="es">Espagne</option>
+                <option value="it">Italie</option>
+                <option value="jp">Japon</option>
+                <option value="br">Brésil</option>
               </select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Review Volume</label>
+              <label className="text-sm font-medium">Nombre d'avis</label>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                {...form.register("volume")}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={count}
+                onChange={(e) => setCount(e.target.value)}
+                disabled={isLoading}
               >
-                <option value="100">Up to 100 reviews</option>
-                <option value="1000">Up to 1,000 reviews</option>
-                <option value="5000">Up to 5,000 reviews</option>
-                <option value="unlimited">Unlimited</option>
+                <option value="100">100 avis</option>
+                <option value="200">200 avis</option>
+                <option value="500">500 avis</option>
+                <option value="1000">1000 avis</option>
               </select>
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isLoading || !input.trim()}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Starting Analysis...
+                Ajout en cours...
               </>
             ) : (
-              "Start Analysis"
+              "Ajouter l'application"
             )}
           </Button>
         </form>
